@@ -15,15 +15,19 @@ use super::{Altitude, Hashable, Position, Recording, Tree};
 /// A set of leaves of a Merkle tree.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Leaf<A> {
-    Left(A),
-    Right(A, A),
+    Leftmost(A),
+    Left(A, A),
+    Right(A, A, A),
+    Rightmost(A, A, A, A),
 }
 
 impl<A> Leaf<A> {
     pub fn into_value(self) -> A {
         match self {
-            Leaf::Left(a) => a,
-            Leaf::Right(_, a) => a,
+            Leaf::Leftmost(a) => a,
+            Leaf::Left(_, a) => a,
+            Leaf::Right(_, _, a) => a,
+            Leaf::Rightmost(_, _, _, a) => a,
         }
     }
 }
@@ -49,7 +53,7 @@ impl<H> NonEmptyFrontier<H> {
     pub fn new(value: H) -> Self {
         NonEmptyFrontier {
             position: Position::zero(),
-            leaf: Leaf::Left(value),
+            leaf: Leaf::Leftmost(value),
             ommers: vec![],
         }
     }
@@ -101,25 +105,35 @@ impl<H: Clone> NonEmptyFrontier<H> {
     /// Returns the value of the most recently appended leaf.
     pub fn leaf_value(&self) -> &H {
         match &self.leaf {
-            Leaf::Left(v) | Leaf::Right(_, v) => v,
+            Leaf::Leftmost(v)
+            | Leaf::Left(_, v)
+            | Leaf::Right(_, _, v)
+            | Leaf::Rightmost(_, _, _, v) => v,
         }
     }
 }
 
 impl<H: Hashable + Clone> NonEmptyFrontier<H> {
     /// Appends a new leaf value to the Merkle frontier. If the current leaf subtree
-    /// of two nodes is full (if the current leaf before the append is a `Leaf::Right`)
+    /// of two nodes is full (if the current leaf before the append is a `Leaf::Rightmost`)
     /// then recompute the ommers by hashing together full subtrees until an empty
     /// ommer slot is found.
     pub fn append(&mut self, value: H) {
         let mut carry = None;
         match &self.leaf {
-            Leaf::Left(a) => {
-                self.leaf = Leaf::Right(a.clone(), value);
+            Leaf::Leftmost(a) => {
+                self.leaf = Leaf::Left(a.clone(), value);
             }
-            Leaf::Right(a, b) => {
+            Leaf::Left(a, b) => {
+                self.leaf = Leaf::Right(a.clone(), b.clone(), value);
+            }
+            Leaf::Right(a, b, c) => {
+                self.leaf = Leaf::Rightmost(a.clone(), b.clone(), c.clone(), value);
+            }
+            Leaf::Rightmost(a, b, c, d) => {
+                // needs update below
                 carry = Some((H::combine(Altitude::zero(), &a, &b), Altitude::one()));
-                self.leaf = Leaf::Left(value);
+                self.leaf = Leaf::Leftmost(value);
             }
         };
 
@@ -514,9 +528,9 @@ impl<H> MerkleBridge<H> {
 }
 
 impl<H: Hashable + Clone + PartialEq> MerkleBridge<H> {
-    /// Constructs a new bridge to follow this one. The 
+    /// Constructs a new bridge to follow this one. The
     /// successor will track the information necessary to create an
-    /// authentication path for the leaf most recently appended to 
+    /// authentication path for the leaf most recently appended to
     /// this bridge's frontier.
     pub fn successor(&self, cur_idx: usize) -> Self {
         let result = MerkleBridge {
@@ -557,7 +571,7 @@ impl<H: Hashable + Clone + PartialEq> MerkleBridge<H> {
     /// Returns a single MerkleBridge that contains the aggregate information
     /// of this bridge and `next`, or None if `next` is not a valid successor
     /// to this bridge. The resulting Bridge will have the same state as though
-    /// `self` had had every leaf used to construct `next` appended to it 
+    /// `self` had had every leaf used to construct `next` appended to it
     /// directly.
     fn fuse(&self, next: &Self) -> Option<MerkleBridge<H>> {
         if next.can_follow(&self) {

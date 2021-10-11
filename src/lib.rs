@@ -32,7 +32,7 @@ use std::convert::TryFrom;
 use std::ops::Add;
 use std::ops::Sub;
 
-/// A type-safe wrapper for indexing into "levels" of a binary tree, such that
+/// A type-safe wrapper for indexing into "levels" of a 4-arity tree, such that
 /// nodes at altitude `0` are leaves, nodes at altitude `1` are parents
 /// of nodes at altitude `0`, and so forth. This type is capable of
 /// representing altitudes in trees containing up to 2^256 leaves.
@@ -110,6 +110,7 @@ impl Position {
         Altitude(if self.0 == 0 {
             0
         } else {
+            // needs change
             63 - self.0.leading_zeros() as u8
         })
     }
@@ -188,13 +189,15 @@ impl From<usize> for Position {
     }
 }
 
-/// A trait describing the operations that make a value  suitable for inclusion in
+/// A trait describing the operations that make a value suitable for inclusion in
 /// an incremental merkle tree.
 pub trait Hashable: Sized {
     fn empty_leaf() -> Self;
 
+    // needs change (take c, d additionally)
     fn combine(level: Altitude, a: &Self, b: &Self) -> Self;
 
+    // needs change (pass thru add'l args to Self::combine)
     fn empty_root(level: Altitude) -> Self {
         Altitude::zero()
             .iter_to(level)
