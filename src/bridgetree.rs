@@ -120,13 +120,13 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
     /// ommer slot is found.
     pub fn append(&mut self, value: H) {
         let mut carry = None;
-        self.leaf = match self.leaf {
+        self.leaf = match &self.leaf {
             Leaf::Leftmost(a) => {
                 //self.leaf = Leaf::Left(a.clone(), value);
-                Leaf::Left(a, value)
+                Leaf::Left(a.clone(), value)
             }
-            Leaf::Left(a, b) => Leaf::Right(a, b, value),
-            Leaf::Right(a, b, c) => Leaf::Rightmost(a, b, c, value),
+            Leaf::Left(a, b) => Leaf::Right(a.clone(), b.clone(), value),
+            Leaf::Right(a, b, c) => Leaf::Rightmost(a.clone(), b.clone(), c.clone(), value),
             Leaf::Rightmost(a, b, c, d) => {
                 carry = Some((
                     H::combine(Altitude::zero(), &a, &b, &c, &d),
@@ -143,7 +143,8 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
                 if let Some((carry_ommer, carry_lvl)) = carry.as_ref() {
                     if *carry_lvl == ommer_lvl {
                         carry = Some((
-                            H::combine(ommer_lvl, &ommer, &carry_ommer, XX, XX),
+                            // only one arg here should be carry_ommer
+                            H::combine(ommer_lvl, &ommer, &carry_ommer, &carry_ommer, &carry_ommer),
                             ommer_lvl + 1,
                         ))
                     } else {
@@ -160,6 +161,7 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
             }
 
             // we carried value out, so we need to push on one more ommer.
+            // changes?
             if let Some((carry_ommer, _)) = carry {
                 new_ommers.push(carry_ommer);
             }
@@ -252,27 +254,42 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
                 break;
             }
 
-            // TODO
+            // TODO:
             digest = H::combine(
                 ommer_lvl,
                 &ommer,
+                &ommer, // wrong
+                &ommer, // wrong
                 // fold up to ommer.lvl pairing with empty roots; if
                 // complete_lvl == ommer.lvl this is just the complete
                 // digest to this point
-                &complete_lvl
-                    .iter_to(ommer_lvl)
-                    .fold(digest, |d, l| H::combine(l, &d, &H::empty_root(l))),
+                &complete_lvl.iter_to(ommer_lvl).fold(digest, |d, l| {
+                    H::combine(
+                        l,
+                        &d,
+                        &H::empty_root(l),
+                        &H::empty_root(l),
+                        &H::empty_root(l),
+                    )
+                }),
             );
 
             complete_lvl = ommer_lvl + 1;
         }
 
-        // TODO
         // if we've exhausted the ommers and still want more altitudes,
         // continue hashing against empty roots
         digest = complete_lvl
             .iter_to(result_lvl.unwrap_or(complete_lvl))
-            .fold(digest, |d, l| H::combine(l, &d, &H::empty_root(l)));
+            .fold(digest, |d, l| {
+                H::combine(
+                    l,
+                    &d,
+                    &H::empty_root(l),
+                    &H::empty_root(l),
+                    &H::empty_root(l),
+                )
+            });
 
         digest
     }

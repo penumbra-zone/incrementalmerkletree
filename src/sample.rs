@@ -1,6 +1,8 @@
 /// Sample implementation of the Tree interface.
 use super::{Altitude, Frontier, Hashable, Position, Recording, Tree};
 
+use crate::ARITY;
+
 #[derive(Clone)]
 pub struct CompleteTree<H: Hashable> {
     leaves: Vec<H>,
@@ -212,17 +214,32 @@ pub(crate) fn lazy_root<H: Hashable + Clone>(mut leaves: Vec<H>) -> H {
         leaves = leaves
             .iter()
             .enumerate()
-            .filter(|(i, _)| (i % 2) == 0)
+            .filter(|(i, _)| (i % ARITY as usize) == 0)
             .map(|(_, a)| a)
             .zip(
                 leaves
                     .iter()
                     .enumerate()
-                    .filter(|(i, _)| (i % 2) == 1)
-                    .map(|(_, b)| b),
+                    .filter(|(i, _)| (i % ARITY as usize) == 1)
+                    .map(|(_, b)| b)
+                    .zip(
+                        leaves
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _)| (i % ARITY as usize) == 2)
+                            .map(|(_, c)| c)
+                            .zip(
+                                leaves
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(i, _)| (i % ARITY as usize) == 3)
+                                    .map(|(_, d)| d),
+                            ),
+                    ),
             )
-            .map(|(a, b)| H::combine(level, a, b))
+            .map(|(a, (b, (c, d)))| H::combine(level, a, b, c, d))
             .collect();
+
         level = level + 1;
     }
 
