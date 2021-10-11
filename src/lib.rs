@@ -194,14 +194,14 @@ impl From<usize> for Position {
 pub trait Hashable: Sized {
     fn empty_leaf() -> Self;
 
-    // needs change (take c, d additionally)
-    fn combine(level: Altitude, a: &Self, b: &Self) -> Self;
+    fn combine(level: Altitude, a: &Self, b: &Self, c: &Self, d: &Self) -> Self;
 
-    // needs change (pass thru add'l args to Self::combine)
     fn empty_root(level: Altitude) -> Self {
         Altitude::zero()
             .iter_to(level)
-            .fold(Self::empty_leaf(), |v, lvl| Self::combine(lvl, &v, &v))
+            .fold(Self::empty_leaf(), |v, lvl| {
+                Self::combine(lvl, &v, &v, &v, &v)
+            })
     }
 }
 
