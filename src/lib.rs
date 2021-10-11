@@ -32,7 +32,9 @@ use std::convert::TryFrom;
 use std::ops::Add;
 use std::ops::Sub;
 
-/// A type-safe wrapper for indexing into "levels" of a binary tree, such that
+pub static ARITY: u8 = 4;
+
+/// A type-safe wrapper for indexing into "levels" of a 4-arity tree, such that
 /// nodes at altitude `0` are leaves, nodes at altitude `1` are parents
 /// of nodes at altitude `0`, and so forth. This type is capable of
 /// representing altitudes in trees containing up to 2^256 leaves.
@@ -110,6 +112,7 @@ impl Position {
         Altitude(if self.0 == 0 {
             0
         } else {
+            // needs change
             63 - self.0.leading_zeros() as u8
         })
     }
@@ -119,7 +122,7 @@ impl Position {
         (0..=self.max_altitude().0)
             .into_iter()
             .filter_map(move |i| {
-                if i != 0 && self.0 & (1 << i) != 0 {
+                if i != 0 && self.ith_coeff(i) != ARITY - 1 {
                     Some(Altitude(i))
                 } else {
                     None
@@ -134,12 +137,18 @@ impl Position {
         (0..=self.max_altitude().0)
             .into_iter()
             .filter_map(move |i| {
-                if self.0 == 0 || self.0 & (1 << i) == 0 {
-                    Some(Altitude(i))
-                } else {
+                if self.ith_coeff(i) == ARITY - 1 {
+                    // Returns none as we're ascending from the rightmost node.
                     None
+                } else {
+                    Some(Altitude(i))
                 }
             })
+    }
+
+    /// Hardcode 4 as the tree arity.
+    fn ith_coeff(&self, i: u8) -> u8 {
+        ((self.0 >> (2 * i)) & 0b11) as u8
     }
 
     /// Returns the altitude of each cousin and/or ommer required to construct
@@ -147,7 +156,7 @@ impl Position {
     /// nodes.
     pub fn all_altitudes_required(&self) -> impl Iterator<Item = Altitude> + '_ {
         (0..64).into_iter().filter_map(move |i| {
-            if self.0 == 0 || self.0 & (1 << i) == 0 {
+            if self.0 == 0 || self.ith_coeff(i) == ARITY - 1 {
                 Some(Altitude(i))
             } else {
                 None
@@ -161,7 +170,7 @@ impl Position {
     /// any empty leaves or internal nodes.
     pub fn is_complete(&self, to_altitude: Altitude) -> bool {
         for i in 0..(to_altitude.0) {
-            if self.0 & (1 << i) == 0 {
+            if self.ith_coeff(i) == ARITY - 1 {
                 return false;
             }
         }
@@ -188,17 +197,19 @@ impl From<usize> for Position {
     }
 }
 
-/// A trait describing the operations that make a value  suitable for inclusion in
+/// A trait describing the operations that make a value suitable for inclusion in
 /// an incremental merkle tree.
 pub trait Hashable: Sized {
     fn empty_leaf() -> Self;
 
-    fn combine(level: Altitude, a: &Self, b: &Self) -> Self;
+    fn combine(level: Altitude, a: &Self, b: &Self, c: &Self, d: &Self) -> Self;
 
     fn empty_root(level: Altitude) -> Self {
         Altitude::zero()
             .iter_to(level)
-            .fold(Self::empty_leaf(), |v, lvl| Self::combine(lvl, &v, &v))
+            .fold(Self::empty_leaf(), |v, lvl| {
+                Self::combine(lvl, &v, &v, &v, &v)
+            })
     }
 }
 

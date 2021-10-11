@@ -1,6 +1,8 @@
 /// Sample implementation of the Tree interface.
 use super::{Altitude, Frontier, Hashable, Position, Recording, Tree};
 
+use crate::ARITY;
+
 #[derive(Clone)]
 pub struct CompleteTree<H: Hashable> {
     leaves: Vec<H>,
@@ -212,17 +214,32 @@ pub(crate) fn lazy_root<H: Hashable + Clone>(mut leaves: Vec<H>) -> H {
         leaves = leaves
             .iter()
             .enumerate()
-            .filter(|(i, _)| (i % 2) == 0)
+            .filter(|(i, _)| (i % ARITY as usize) == 0)
             .map(|(_, a)| a)
             .zip(
                 leaves
                     .iter()
                     .enumerate()
-                    .filter(|(i, _)| (i % 2) == 1)
-                    .map(|(_, b)| b),
+                    .filter(|(i, _)| (i % ARITY as usize) == 1)
+                    .map(|(_, b)| b)
+                    .zip(
+                        leaves
+                            .iter()
+                            .enumerate()
+                            .filter(|(i, _)| (i % ARITY as usize) == 2)
+                            .map(|(_, c)| c)
+                            .zip(
+                                leaves
+                                    .iter()
+                                    .enumerate()
+                                    .filter(|(i, _)| (i % ARITY as usize) == 3)
+                                    .map(|(_, d)| d),
+                            ),
+                    ),
             )
-            .map(|(a, b)| H::combine(level, a, b))
+            .map(|(a, (b, (c, d)))| H::combine(level, a, b, c, d))
             .collect();
+
         level = level + 1;
     }
 
@@ -241,7 +258,7 @@ mod tests {
         const DEPTH: u8 = 5;
         let mut expected = SipHashable(0u64);
         for lvl in 0u8..DEPTH {
-            expected = SipHashable::combine(lvl.into(), &expected, &expected);
+            expected = SipHashable::combine(lvl.into(), &expected, &expected, &expected, &expected);
         }
 
         let tree = CompleteTree::<SipHashable>::new(DEPTH as usize, 100);
@@ -259,17 +276,84 @@ mod tests {
         }
         assert!(!tree.append(&SipHashable(0)));
 
+        // TODO: Fix test values
         let expected = SipHashable::combine(
             <Altitude>::from(2),
             &SipHashable::combine(
                 Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(0),
+                    &SipHashable(1),
+                    &SipHashable(2),
+                    &SipHashable(3),
+                ),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(4),
+                    &SipHashable(5),
+                    &SipHashable(6),
+                    &SipHashable(7),
+                ),
+                &SipHashable(8),
+                &SipHashable(9),
             ),
             &SipHashable::combine(
                 Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(8),
+                    &SipHashable(9),
+                    &SipHashable(10),
+                    &SipHashable(11),
+                ),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(12),
+                    &SipHashable(13),
+                    &SipHashable(14),
+                    &SipHashable(15),
+                ),
+                &SipHashable(8),
+                &SipHashable(9),
+            ),
+            &SipHashable::combine(
+                Altitude::one(),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(8),
+                    &SipHashable(9),
+                    &SipHashable(10),
+                    &SipHashable(11),
+                ),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(12),
+                    &SipHashable(13),
+                    &SipHashable(14),
+                    &SipHashable(15),
+                ),
+                &SipHashable(8),
+                &SipHashable(9),
+            ),
+            &SipHashable::combine(
+                Altitude::one(),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(8),
+                    &SipHashable(9),
+                    &SipHashable(10),
+                    &SipHashable(11),
+                ),
+                &SipHashable::combine(
+                    Altitude::zero(),
+                    &SipHashable(12),
+                    &SipHashable(13),
+                    &SipHashable(14),
+                    &SipHashable(15),
+                ),
+                &SipHashable(8),
+                &SipHashable(9),
             ),
         );
 
