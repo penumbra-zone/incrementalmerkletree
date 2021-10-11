@@ -120,23 +120,19 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
     /// ommer slot is found.
     pub fn append(&mut self, value: H) {
         let mut carry = None;
-        match &self.leaf {
+        self.leaf = match self.leaf {
             Leaf::Leftmost(a) => {
-                self.leaf = Leaf::Left(a.clone(), value);
+                //self.leaf = Leaf::Left(a.clone(), value);
+                Leaf::Left(a, value)
             }
-            Leaf::Left(a, b) => {
-                self.leaf = Leaf::Right(a.clone(), b.clone(), value);
-            }
-            Leaf::Right(a, b, c) => {
-                self.leaf = Leaf::Rightmost(a.clone(), b.clone(), c.clone(), value);
-            }
+            Leaf::Left(a, b) => Leaf::Right(a, b, value),
+            Leaf::Right(a, b, c) => Leaf::Rightmost(a, b, c, value),
             Leaf::Rightmost(a, b, c, d) => {
-                // needs update below
                 carry = Some((
                     H::combine(Altitude::zero(), &a, &b, &c, &d),
                     Altitude::one(),
                 ));
-                self.leaf = Leaf::Leftmost(value);
+                Leaf::Leftmost(value)
             }
         };
 
@@ -146,7 +142,10 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
             for (ommer, ommer_lvl) in self.ommers.iter().zip(self.position.ommer_altitudes()) {
                 if let Some((carry_ommer, carry_lvl)) = carry.as_ref() {
                     if *carry_lvl == ommer_lvl {
-                        carry = Some((H::combine(ommer_lvl, &ommer, &carry_ommer), ommer_lvl + 1))
+                        carry = Some((
+                            H::combine(ommer_lvl, &ommer, &carry_ommer, XX, XX),
+                            ommer_lvl + 1,
+                        ))
                     } else {
                         // insert the carry at the first empty slot; then the rest of the
                         // ommers will remain unchanged
