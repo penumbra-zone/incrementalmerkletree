@@ -265,135 +265,135 @@ mod tests {
         assert_eq!(tree.root(), expected);
     }
 
-    #[test]
-    fn correct_root() {
-        const DEPTH: usize = 3;
-        let values = (0..(1 << DEPTH)).into_iter().map(SipHashable);
+    // #[test]
+    // fn correct_root() {
+    //     const DEPTH: usize = 3;
+    //     let values = (0..(1 << DEPTH)).into_iter().map(SipHashable);
 
-        let mut tree = CompleteTree::<SipHashable>::new(DEPTH, 100);
-        for value in values {
-            assert!(tree.append(&value));
-        }
-        assert!(!tree.append(&SipHashable(0)));
+    //     let mut tree = CompleteTree::<SipHashable>::new(DEPTH, 100);
+    //     for value in values {
+    //         assert!(tree.append(&value));
+    //     }
+    //     assert!(!tree.append(&SipHashable(0)));
 
-        // TODO: Fix test values
-        let expected = SipHashable::combine(
-            <Altitude>::from(2),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(0),
-                    &SipHashable(1),
-                    &SipHashable(2),
-                    &SipHashable(3),
-                ),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(4),
-                    &SipHashable(5),
-                    &SipHashable(6),
-                    &SipHashable(7),
-                ),
-                &SipHashable(8),
-                &SipHashable(9),
-            ),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(8),
-                    &SipHashable(9),
-                    &SipHashable(10),
-                    &SipHashable(11),
-                ),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(12),
-                    &SipHashable(13),
-                    &SipHashable(14),
-                    &SipHashable(15),
-                ),
-                &SipHashable(8),
-                &SipHashable(9),
-            ),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(8),
-                    &SipHashable(9),
-                    &SipHashable(10),
-                    &SipHashable(11),
-                ),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(12),
-                    &SipHashable(13),
-                    &SipHashable(14),
-                    &SipHashable(15),
-                ),
-                &SipHashable(8),
-                &SipHashable(9),
-            ),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(8),
-                    &SipHashable(9),
-                    &SipHashable(10),
-                    &SipHashable(11),
-                ),
-                &SipHashable::combine(
-                    Altitude::zero(),
-                    &SipHashable(12),
-                    &SipHashable(13),
-                    &SipHashable(14),
-                    &SipHashable(15),
-                ),
-                &SipHashable(8),
-                &SipHashable(9),
-            ),
-        );
+    //     // TODO: Fix test values
+    //     let expected = SipHashable::combine(
+    //         <Altitude>::from(2),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(0),
+    //                 &SipHashable(1),
+    //                 &SipHashable(2),
+    //                 &SipHashable(3),
+    //             ),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(4),
+    //                 &SipHashable(5),
+    //                 &SipHashable(6),
+    //                 &SipHashable(7),
+    //             ),
+    //             &SipHashable(8),
+    //             &SipHashable(9),
+    //         ),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(8),
+    //                 &SipHashable(9),
+    //                 &SipHashable(10),
+    //                 &SipHashable(11),
+    //             ),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(12),
+    //                 &SipHashable(13),
+    //                 &SipHashable(14),
+    //                 &SipHashable(15),
+    //             ),
+    //             &SipHashable(8),
+    //             &SipHashable(9),
+    //         ),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(8),
+    //                 &SipHashable(9),
+    //                 &SipHashable(10),
+    //                 &SipHashable(11),
+    //             ),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(12),
+    //                 &SipHashable(13),
+    //                 &SipHashable(14),
+    //                 &SipHashable(15),
+    //             ),
+    //             &SipHashable(8),
+    //             &SipHashable(9),
+    //         ),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(8),
+    //                 &SipHashable(9),
+    //                 &SipHashable(10),
+    //                 &SipHashable(11),
+    //             ),
+    //             &SipHashable::combine(
+    //                 Altitude::zero(),
+    //                 &SipHashable(12),
+    //                 &SipHashable(13),
+    //                 &SipHashable(14),
+    //                 &SipHashable(15),
+    //             ),
+    //             &SipHashable(8),
+    //             &SipHashable(9),
+    //         ),
+    //     );
 
-        assert_eq!(tree.root(), expected);
-    }
+    //     assert_eq!(tree.root(), expected);
+    // }
 
-    #[test]
-    fn correct_auth_path() {
-        const DEPTH: usize = 3;
-        let values = (0..(1 << DEPTH)).into_iter().map(SipHashable);
+    // #[test]
+    // fn correct_auth_path() {
+    //     const DEPTH: usize = 3;
+    //     let values = (0..(1 << DEPTH)).into_iter().map(SipHashable);
 
-        let mut tree = CompleteTree::<SipHashable>::new(DEPTH, 100);
-        for value in values {
-            assert!(tree.append(&value));
-            tree.witness();
-        }
-        assert!(!tree.append(&SipHashable(0)));
+    //     let mut tree = CompleteTree::<SipHashable>::new(DEPTH, 100);
+    //     for value in values {
+    //         assert!(tree.append(&value));
+    //         tree.witness();
+    //     }
+    //     assert!(!tree.append(&SipHashable(0)));
 
-        let expected = SipHashable::combine(
-            <Altitude>::from(2),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
-            ),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
-            ),
-        );
+    //     let expected = SipHashable::combine(
+    //         <Altitude>::from(2),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
+    //             &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
+    //         ),
+    //         &SipHashable::combine(
+    //             Altitude::one(),
+    //             &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
+    //             &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
+    //         ),
+    //     );
 
-        assert_eq!(tree.root(), expected);
+    //     assert_eq!(tree.root(), expected);
 
-        for i in 0..(1 << DEPTH) {
-            let (position, path) = tree.authentication_path(&SipHashable(i)).unwrap();
-            assert_eq!(
-                compute_root_from_auth_path(SipHashable(i), position, &path),
-                expected
-            );
-        }
-    }
+    //     for i in 0..(1 << DEPTH) {
+    //         let (position, path) = tree.authentication_path(&SipHashable(i)).unwrap();
+    //         assert_eq!(
+    //             compute_root_from_auth_path(SipHashable(i), position, &path),
+    //             expected
+    //         );
+    //     }
+    // }
 }

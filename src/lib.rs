@@ -169,13 +169,31 @@ impl Position {
     /// `to_altitude + 1` that contains the aforesaid leaf, without requiring
     /// any empty leaves or internal nodes.
     pub fn is_complete(&self, to_altitude: Altitude) -> bool {
+        dbg!(to_altitude);
         for i in 0..(to_altitude.0) {
+            dbg!(i);
+            dbg!(self.ith_coeff(i) == ARITY - 1);
             if self.ith_coeff(i) == ARITY - 1 {
                 return false;
             }
         }
         true
     }
+}
+
+// Intuition: What is the highest power of arity that goes into the position?
+pub fn ith_coeff(arity: u8, pos_last_leaf: u8, i: u8, max_alt: u32) -> bool {
+    // If divisible by arity, we are in the Rightmost leaf position.
+    if i == 0 {
+        return pos_last_leaf % arity == 0;
+    }
+
+    for exp in (0..=max_alt).rev() {
+        if (pos_last_leaf + 1) % arity.pow(exp) == 0 {
+            return i as u32 == exp;
+        }
+    }
+    false
 }
 
 impl TryFrom<Position> for usize {
@@ -425,10 +443,12 @@ pub(crate) mod tests {
             SipHashable(0)
         }
 
-        fn combine(_level: Altitude, a: &Self, b: &Self) -> Self {
+        fn combine(_level: Altitude, a: &Self, b: &Self, c: &Self, d: &Self) -> Self {
             let mut hasher = SipHasher::new();
             hasher.write_u64(a.0);
             hasher.write_u64(b.0);
+            hasher.write_u64(c.0);
+            hasher.write_u64(d.0);
             SipHashable(hasher.finish())
         }
     }
@@ -438,7 +458,7 @@ pub(crate) mod tests {
             "_".to_string()
         }
 
-        fn combine(_: Altitude, a: &Self, b: &Self) -> Self {
+        fn combine(_: Altitude, a: &Self, b: &Self, c: &Self, d: &Self) -> Self {
             a.to_string() + b
         }
     }
@@ -507,9 +527,10 @@ pub(crate) mod tests {
             .map(|(i, v)| (((<usize>::try_from(position).unwrap() >> i) & 1) == 1, v))
         {
             if i {
-                cur = H::combine(lvl, v, &cur);
+                // Last two args not cur
+                cur = H::combine(lvl, v, &cur, &cur, &cur);
             } else {
-                cur = H::combine(lvl, &cur, v);
+                cur = H::combine(lvl, &cur, v, &cur, &cur);
             }
             lvl = lvl + 1;
         }
@@ -517,214 +538,236 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_compute_root_from_auth_path() {
-        let expected = SipHashable::combine(
-            <Altitude>::from(2),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
-            ),
-            &SipHashable::combine(
-                Altitude::one(),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
-                &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
-            ),
-        );
+    fn test_helper_ith_coeff_fn() {
+        use crate::ith_coeff;
 
-        assert_eq!(
-            compute_root_from_auth_path::<SipHashable>(
-                SipHashable(0),
-                Position::zero(),
-                &[
-                    SipHashable(1),
-                    SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
-                    SipHashable::combine(
-                        Altitude::one(),
-                        &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
-                        &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7))
-                    )
-                ]
-            ),
-            expected
-        );
+        let mut arity = 2;
+        assert_eq!(ith_coeff(arity, 0, 0, 2), true);
+        assert_eq!(ith_coeff(arity, 1, 0, 2), false);
+        assert_eq!(ith_coeff(arity, 1, 1, 2), true);
+        assert_eq!(ith_coeff(arity, 2, 0, 2), true);
+        assert_eq!(ith_coeff(arity, 3, 0, 2), false);
+        assert_eq!(ith_coeff(arity, 3, 1, 2), false);
+        assert_eq!(ith_coeff(arity, 3, 2, 2), true);
+        assert_eq!(ith_coeff(arity, 4, 0, 2), true);
+        assert_eq!(ith_coeff(arity, 5, 0, 2), false);
+        assert_eq!(ith_coeff(arity, 5, 1, 2), true);
+        assert_eq!(ith_coeff(arity, 6, 0, 2), true);
 
-        assert_eq!(
-            compute_root_from_auth_path(
-                SipHashable(4),
-                <Position>::from(4),
-                &[
-                    SipHashable(5),
-                    SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
-                    SipHashable::combine(
-                        Altitude::one(),
-                        &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
-                        &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3))
-                    )
-                ]
-            ),
-            expected
-        );
+        arity = 4;
+        //assert_eq!(ith_coeff(4, 0, 0, 1), false);
+        //assert_eq!(ith_coeff(arity, 0, 1, 1), true);
     }
 
-    use proptest::prelude::*;
-    use proptest::sample::select;
+    //     #[test]
+    //     fn test_compute_root_from_auth_path() {
+    //         let expected = SipHashable::combine(
+    //             <Altitude>::from(2),
+    //             &SipHashable::combine(
+    //                 Altitude::one(),
+    //                 &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
+    //                 &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
+    //             ),
+    //             &SipHashable::combine(
+    //                 Altitude::one(),
+    //                 &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
+    //                 &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
+    //             ),
+    //         );
 
-    fn arb_operation<G: Strategy>(item_gen: G) -> impl Strategy<Value = Operation<G::Value>>
-    where
-        G::Value: Clone + 'static,
-    {
-        item_gen.prop_flat_map(|item| {
-            select(vec![
-                Append(item.clone()),
-                Witness,
-                Unwitness(item.clone()),
-                Checkpoint,
-                Rewind,
-                Authpath(item),
-            ])
-        })
-    }
+    //         assert_eq!(
+    //             compute_root_from_auth_path::<SipHashable>(
+    //                 SipHashable(0),
+    //                 Position::zero(),
+    //                 &[
+    //                     SipHashable(1),
+    //                     SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3)),
+    //                     SipHashable::combine(
+    //                         Altitude::one(),
+    //                         &SipHashable::combine(Altitude::zero(), &SipHashable(4), &SipHashable(5)),
+    //                         &SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7))
+    //                     )
+    //                 ]
+    //             ),
+    //             expected
+    //         );
 
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(100000))]
+    //         assert_eq!(
+    //             compute_root_from_auth_path(
+    //                 SipHashable(4),
+    //                 <Position>::from(4),
+    //                 &[
+    //                     SipHashable(5),
+    //                     SipHashable::combine(Altitude::zero(), &SipHashable(6), &SipHashable(7)),
+    //                     SipHashable::combine(
+    //                         Altitude::one(),
+    //                         &SipHashable::combine(Altitude::zero(), &SipHashable(0), &SipHashable(1)),
+    //                         &SipHashable::combine(Altitude::zero(), &SipHashable(2), &SipHashable(3))
+    //                     )
+    //                 ]
+    //             ),
+    //             expected
+    //         );
+    //     }
 
-        #[test]
-        fn check_randomized_u64_ops(
-            ops in proptest::collection::vec(
-                arb_operation((0..32u64).prop_map(SipHashable)),
-                1..100
-            )
-        ) {
-            check_operations(ops)?;
-        }
+    //     use proptest::prelude::*;
+    //     use proptest::sample::select;
 
-        #[test]
-        fn check_randomized_str_ops(
-            ops in proptest::collection::vec(
-                arb_operation((97u8..123).prop_map(|c| char::from(c).to_string())),
-                1..100
-            )
-        ) {
-            check_operations::<String>(ops)?;
-        }
-    }
+    //     fn arb_operation<G: Strategy>(item_gen: G) -> impl Strategy<Value = Operation<G::Value>>
+    //     where
+    //         G::Value: Clone + 'static,
+    //     {
+    //         item_gen.prop_flat_map(|item| {
+    //             select(vec![
+    //                 Append(item.clone()),
+    //                 Witness,
+    //                 Unwitness(item.clone()),
+    //                 Checkpoint,
+    //                 Rewind,
+    //                 Authpath(item),
+    //             ])
+    //         })
+    //     }
 
-    fn check_operations<H: Hashable + Clone + std::fmt::Debug + Eq + Hash>(
-        ops: Vec<Operation<H>>,
-    ) -> Result<(), TestCaseError> {
-        const DEPTH: u8 = 4;
-        let mut tree = CombinedTree::<H, DEPTH>::new();
+    //     proptest! {
+    //         #![proptest_config(ProptestConfig::with_cases(100000))]
 
-        let mut prevtrees = vec![];
+    //         #[test]
+    //         fn check_randomized_u64_ops(
+    //             ops in proptest::collection::vec(
+    //                 arb_operation((0..32u64).prop_map(SipHashable)),
+    //                 1..100
+    //             )
+    //         ) {
+    //             check_operations(ops)?;
+    //         }
 
-        let mut tree_size = 0;
-        let mut tree_values = vec![];
-        let mut tree_checkpoints = vec![];
-        let mut tree_witnesses: Vec<(usize, H)> = vec![];
+    //         #[test]
+    //         fn check_randomized_str_ops(
+    //             ops in proptest::collection::vec(
+    //                 arb_operation((97u8..123).prop_map(|c| char::from(c).to_string())),
+    //                 1..100
+    //             )
+    //         ) {
+    //             check_operations::<String>(ops)?;
+    //         }
+    //     }
 
-        for op in ops {
-            prop_assert_eq!(tree_size, tree_values.len());
-            match op {
-                Append(value) => {
-                    prevtrees.push((tree.clone(), tree.recording()));
-                    if tree.append(&value) {
-                        prop_assert!(tree_size < (1 << DEPTH));
-                        tree_size += 1;
-                        tree_values.push(value.clone());
+    //     fn check_operations<H: Hashable + Clone + std::fmt::Debug + Eq + Hash>(
+    //         ops: Vec<Operation<H>>,
+    //     ) -> Result<(), TestCaseError> {
+    //         const DEPTH: u8 = 4;
+    //         let mut tree = CombinedTree::<H, DEPTH>::new();
 
-                        for &mut (_, ref mut recording) in &mut prevtrees {
-                            prop_assert!(recording.append(&value));
-                        }
-                    } else {
-                        prop_assert_eq!(tree_size, 1 << DEPTH);
-                    }
-                }
-                Witness => {
-                    if tree.witness() {
-                        prop_assert!(tree_size != 0);
-                        if !tree_witnesses
-                            .iter()
-                            .any(|v| &v.1 == tree_values.last().unwrap())
-                        {
-                            tree_witnesses
-                                .push((tree_size - 1, tree_values.last().unwrap().clone()));
-                        }
-                    } else {
-                        prop_assert_eq!(tree_size, 0);
-                    }
-                }
-                Unwitness(value) => {
-                    if tree.remove_witness(&value) {
-                        if let Some((i, _)) =
-                            tree_witnesses.iter().enumerate().find(|v| (v.1).1 == value)
-                        {
-                            tree_witnesses.remove(i);
-                        } else {
-                            panic!("witness should not have been removed");
-                        }
-                    } else if tree_witnesses.iter().any(|v| v.1 == value) {
-                        panic!("witness should have been removed");
-                    }
-                }
-                Checkpoint => {
-                    tree_checkpoints.push(tree_size);
-                    tree.checkpoint();
-                }
-                Rewind => {
-                    prevtrees.truncate(0);
+    //         let mut prevtrees = vec![];
 
-                    if tree.rewind() {
-                        prop_assert!(!tree_checkpoints.is_empty());
-                        let checkpoint_location = tree_checkpoints.pop().unwrap();
-                        //for &(index, _) in tree_witnesses.iter() {
-                        //    // index is the index in tree_values
-                        //    // checkpoint_location is the size of the tree
-                        //    // at the time of the checkpoint
-                        //    // index should always be strictly smaller or
-                        //    // else a witness would be erased!
-                        //    prop_assert!(index < checkpoint_location);
-                        //}
-                        tree_values.truncate(checkpoint_location);
-                        tree_size = checkpoint_location;
-                    } else if !tree_checkpoints.is_empty() {
-                        let checkpoint_location = *tree_checkpoints.last().unwrap();
-                        prop_assert!(tree_witnesses
-                            .iter()
-                            .any(|&(index, _)| index >= checkpoint_location));
-                    }
-                }
-                Authpath(value) => {
-                    if let Some((position, path)) = tree.authentication_path(&value) {
-                        // must be the case that value was a witness
-                        assert!(tree_witnesses.iter().any(|(_, witness)| witness == &value));
+    //         let mut tree_size = 0;
+    //         let mut tree_values = vec![];
+    //         let mut tree_checkpoints = vec![];
+    //         let mut tree_witnesses: Vec<(usize, H)> = vec![];
 
-                        let mut extended_tree_values = tree_values.clone();
-                        extended_tree_values.resize(1 << DEPTH, H::empty_leaf());
-                        let expected_root = lazy_root::<H>(extended_tree_values);
+    //         for op in ops {
+    //             prop_assert_eq!(tree_size, tree_values.len());
+    //             match op {
+    //                 Append(value) => {
+    //                     prevtrees.push((tree.clone(), tree.recording()));
+    //                     if tree.append(&value) {
+    //                         prop_assert!(tree_size < (1 << DEPTH));
+    //                         tree_size += 1;
+    //                         tree_values.push(value.clone());
 
-                        let tree_root = tree.root();
-                        prop_assert_eq!(&tree_root, &expected_root);
+    //                         for &mut (_, ref mut recording) in &mut prevtrees {
+    //                             prop_assert!(recording.append(&value));
+    //                         }
+    //                     } else {
+    //                         prop_assert_eq!(tree_size, 1 << DEPTH);
+    //                     }
+    //                 }
+    //                 Witness => {
+    //                     if tree.witness() {
+    //                         prop_assert!(tree_size != 0);
+    //                         if !tree_witnesses
+    //                             .iter()
+    //                             .any(|v| &v.1 == tree_values.last().unwrap())
+    //                         {
+    //                             tree_witnesses
+    //                                 .push((tree_size - 1, tree_values.last().unwrap().clone()));
+    //                         }
+    //                     } else {
+    //                         prop_assert_eq!(tree_size, 0);
+    //                     }
+    //                 }
+    //                 Unwitness(value) => {
+    //                     if tree.remove_witness(&value) {
+    //                         if let Some((i, _)) =
+    //                             tree_witnesses.iter().enumerate().find(|v| (v.1).1 == value)
+    //                         {
+    //                             tree_witnesses.remove(i);
+    //                         } else {
+    //                             panic!("witness should not have been removed");
+    //                         }
+    //                     } else if tree_witnesses.iter().any(|v| v.1 == value) {
+    //                         panic!("witness should have been removed");
+    //                     }
+    //                 }
+    //                 Checkpoint => {
+    //                     tree_checkpoints.push(tree_size);
+    //                     tree.checkpoint();
+    //                 }
+    //                 Rewind => {
+    //                     prevtrees.truncate(0);
 
-                        prop_assert_eq!(
-                            &compute_root_from_auth_path(value, position, &path),
-                            &expected_root
-                        );
-                    } else {
-                        // must be the case that value wasn't a witness
-                        for (_, witness) in tree_witnesses.iter() {
-                            prop_assert!(witness != &value);
-                        }
-                    }
-                }
-            }
-        }
+    //                     if tree.rewind() {
+    //                         prop_assert!(!tree_checkpoints.is_empty());
+    //                         let checkpoint_location = tree_checkpoints.pop().unwrap();
+    //                         //for &(index, _) in tree_witnesses.iter() {
+    //                         //    // index is the index in tree_values
+    //                         //    // checkpoint_location is the size of the tree
+    //                         //    // at the time of the checkpoint
+    //                         //    // index should always be strictly smaller or
+    //                         //    // else a witness would be erased!
+    //                         //    prop_assert!(index < checkpoint_location);
+    //                         //}
+    //                         tree_values.truncate(checkpoint_location);
+    //                         tree_size = checkpoint_location;
+    //                     } else if !tree_checkpoints.is_empty() {
+    //                         let checkpoint_location = *tree_checkpoints.last().unwrap();
+    //                         prop_assert!(tree_witnesses
+    //                             .iter()
+    //                             .any(|&(index, _)| index >= checkpoint_location));
+    //                     }
+    //                 }
+    //                 Authpath(value) => {
+    //                     if let Some((position, path)) = tree.authentication_path(&value) {
+    //                         // must be the case that value was a witness
+    //                         assert!(tree_witnesses.iter().any(|(_, witness)| witness == &value));
 
-        for (mut other_tree, other_recording) in prevtrees {
-            prop_assert!(other_tree.play(&other_recording));
-            prop_assert_eq!(tree.root(), other_tree.root());
-        }
+    //                         let mut extended_tree_values = tree_values.clone();
+    //                         extended_tree_values.resize(1 << DEPTH, H::empty_leaf());
+    //                         let expected_root = lazy_root::<H>(extended_tree_values);
 
-        Ok(())
-    }
+    //                         let tree_root = tree.root();
+    //                         prop_assert_eq!(&tree_root, &expected_root);
+
+    //                         prop_assert_eq!(
+    //                             &compute_root_from_auth_path(value, position, &path),
+    //                             &expected_root
+    //                         );
+    //                     } else {
+    //                         // must be the case that value wasn't a witness
+    //                         for (_, witness) in tree_witnesses.iter() {
+    //                             prop_assert!(witness != &value);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+
+    //         for (mut other_tree, other_recording) in prevtrees {
+    //             prop_assert!(other_tree.play(&other_recording));
+    //             prop_assert_eq!(tree.root(), other_tree.root());
+    //         }
+
+    //         Ok(())
+    //     }
 }

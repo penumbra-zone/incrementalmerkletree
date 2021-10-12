@@ -458,6 +458,8 @@ impl<A> AuthFragment<A> {
     }
 
     pub fn is_complete(&self) -> bool {
+        dbg!("is_complete");
+        dbg!(self.altitudes_observed >= self.position.altitudes_required().count());
         self.altitudes_observed >= self.position.altitudes_required().count()
     }
 
@@ -805,14 +807,20 @@ impl<H: Hashable + Hash + Eq + Clone, const DEPTH: u8> BridgeTree<H, DEPTH> {
 
 impl<H: Hashable + Hash + Eq + Clone, const DEPTH: u8> crate::Frontier<H> for BridgeTree<H, DEPTH> {
     fn append(&mut self, value: &H) -> bool {
+        dbg!("in append");
+        dbg!(Altitude(DEPTH));
         if let Some(bridge) = self.bridges.last_mut() {
+            dbg!(bridge.frontier.position());
             if bridge.frontier.position().is_complete(Altitude(DEPTH)) {
+                dbg!(bridge.frontier.position().is_complete(Altitude(DEPTH)));
                 false
             } else {
+                dbg!("in first else");
                 bridge.append(value.clone());
                 true
             }
         } else {
+            dbg!("in second else");
             self.bridges.push(MerkleBridge::new(value.clone()));
             true
         }
@@ -1111,304 +1119,307 @@ mod tests {
     }
 
     #[test]
-    fn tree_depth() {
-        let mut tree = BridgeTree::<String, 3>::new(100);
-        for c in 'a'..'i' {
-            assert!(tree.append(&c.to_string()))
+    fn tree_depth_cannot_be_exceeded() {
+        let mut tree = BridgeTree::<String, 2>::new(100);
+        for c in 'a'..'p' {
+            dbg!(c);
+            dbg!(tree.append(&c.to_string()));
+            //assert!(tree.append(&c.to_string()))
         }
-        assert!(!tree.append(&'i'.to_string()));
+        assert!(!tree.append(&'q'.to_string()));
+        panic!()
     }
 
-    #[test]
-    fn root_hashes() {
-        let mut bridge = MerkleBridge::<String>::new("a".to_string());
-        assert_eq!(bridge.root(), "a_");
+    //     #[test]
+    //     fn root_hashes() {
+    //         let mut bridge = MerkleBridge::<String>::new("a".to_string());
+    //         assert_eq!(bridge.root(), "a_");
 
-        bridge.append("b".to_string());
-        assert_eq!(bridge.root(), "ab");
+    //         bridge.append("b".to_string());
+    //         assert_eq!(bridge.root(), "ab");
 
-        bridge.append("c".to_string());
-        assert_eq!(bridge.root(), "abc_");
+    //         bridge.append("c".to_string());
+    //         assert_eq!(bridge.root(), "abc_");
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        assert_eq!(tree.root(), "________________");
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         assert_eq!(tree.root(), "________________");
 
-        tree.append(&"a".to_string());
-        assert_eq!(tree.root().len(), 16);
-        assert_eq!(tree.root(), "a_______________");
+    //         tree.append(&"a".to_string());
+    //         assert_eq!(tree.root().len(), 16);
+    //         assert_eq!(tree.root(), "a_______________");
 
-        tree.append(&"b".to_string());
-        assert_eq!(tree.root(), "ab______________");
+    //         tree.append(&"b".to_string());
+    //         assert_eq!(tree.root(), "ab______________");
 
-        tree.append(&"c".to_string());
-        assert_eq!(tree.root(), "abc_____________");
-    }
+    //         tree.append(&"c".to_string());
+    //         assert_eq!(tree.root(), "abc_____________");
+    //     }
 
-    #[test]
-    fn auth_paths() {
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&"a".to_string());
-        tree.witness();
-        assert_eq!(
-            tree.authentication_path(&"a".to_string()),
-            Some((
-                Position::zero(),
-                vec![
-                    "_".to_string(),
-                    "__".to_string(),
-                    "____".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //     #[test]
+    //     fn auth_paths() {
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&"a".to_string());
+    //         tree.witness();
+    //         assert_eq!(
+    //             tree.authentication_path(&"a".to_string()),
+    //             Some((
+    //                 Position::zero(),
+    //                 vec![
+    //                     "_".to_string(),
+    //                     "__".to_string(),
+    //                     "____".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        tree.append(&"b".to_string());
-        assert_eq!(
-            tree.authentication_path(&"a".to_string()),
-            Some((
-                Position::zero(),
-                vec![
-                    "b".to_string(),
-                    "__".to_string(),
-                    "____".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         tree.append(&"b".to_string());
+    //         assert_eq!(
+    //             tree.authentication_path(&"a".to_string()),
+    //             Some((
+    //                 Position::zero(),
+    //                 vec![
+    //                     "b".to_string(),
+    //                     "__".to_string(),
+    //                     "____".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        tree.append(&"c".to_string());
-        tree.witness();
-        assert_eq!(
-            tree.authentication_path(&"c".to_string()),
-            Some((
-                Position::from(2),
-                vec![
-                    "_".to_string(),
-                    "ab".to_string(),
-                    "____".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         tree.append(&"c".to_string());
+    //         tree.witness();
+    //         assert_eq!(
+    //             tree.authentication_path(&"c".to_string()),
+    //             Some((
+    //                 Position::from(2),
+    //                 vec![
+    //                     "_".to_string(),
+    //                     "ab".to_string(),
+    //                     "____".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        tree.append(&"d".to_string());
-        assert_eq!(
-            tree.authentication_path(&"c".to_string()),
-            Some((
-                Position::from(2),
-                vec![
-                    "d".to_string(),
-                    "ab".to_string(),
-                    "____".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         tree.append(&"d".to_string());
+    //         assert_eq!(
+    //             tree.authentication_path(&"c".to_string()),
+    //             Some((
+    //                 Position::from(2),
+    //                 vec![
+    //                     "d".to_string(),
+    //                     "ab".to_string(),
+    //                     "____".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        tree.append(&"e".to_string());
-        assert_eq!(
-            tree.authentication_path(&"c".to_string()),
-            Some((
-                Position::from(2),
-                vec![
-                    "d".to_string(),
-                    "ab".to_string(),
-                    "e___".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         tree.append(&"e".to_string());
+    //         assert_eq!(
+    //             tree.authentication_path(&"c".to_string()),
+    //             Some((
+    //                 Position::from(2),
+    //                 vec![
+    //                     "d".to_string(),
+    //                     "ab".to_string(),
+    //                     "e___".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&"a".to_string());
-        tree.witness();
-        for c in 'b'..'h' {
-            tree.append(&c.to_string());
-        }
-        tree.witness();
-        tree.append(&"h".to_string());
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&"a".to_string());
+    //         tree.witness();
+    //         for c in 'b'..'h' {
+    //             tree.append(&c.to_string());
+    //         }
+    //         tree.witness();
+    //         tree.append(&"h".to_string());
 
-        assert_eq!(
-            tree.authentication_path(&"a".to_string()),
-            Some((
-                Position::zero(),
-                vec![
-                    "b".to_string(),
-                    "cd".to_string(),
-                    "efgh".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"a".to_string()),
+    //             Some((
+    //                 Position::zero(),
+    //                 vec![
+    //                     "b".to_string(),
+    //                     "cd".to_string(),
+    //                     "efgh".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&"a".to_string());
-        tree.witness();
-        tree.append(&"b".to_string());
-        tree.append(&"c".to_string());
-        tree.append(&"d".to_string());
-        tree.witness();
-        tree.append(&"e".to_string());
-        tree.witness();
-        tree.append(&"f".to_string());
-        tree.witness();
-        tree.append(&"g".to_string());
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&"a".to_string());
+    //         tree.witness();
+    //         tree.append(&"b".to_string());
+    //         tree.append(&"c".to_string());
+    //         tree.append(&"d".to_string());
+    //         tree.witness();
+    //         tree.append(&"e".to_string());
+    //         tree.witness();
+    //         tree.append(&"f".to_string());
+    //         tree.witness();
+    //         tree.append(&"g".to_string());
 
-        assert_eq!(
-            tree.authentication_path(&"f".to_string()),
-            Some((
-                Position::from(5),
-                vec![
-                    "e".to_string(),
-                    "g_".to_string(),
-                    "abcd".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"f".to_string()),
+    //             Some((
+    //                 Position::from(5),
+    //                 vec![
+    //                     "e".to_string(),
+    //                     "g_".to_string(),
+    //                     "abcd".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        for c in 'a'..'l' {
-            tree.append(&c.to_string());
-        }
-        tree.witness();
-        tree.append(&'l'.to_string());
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         for c in 'a'..'l' {
+    //             tree.append(&c.to_string());
+    //         }
+    //         tree.witness();
+    //         tree.append(&'l'.to_string());
 
-        assert_eq!(
-            tree.authentication_path(&"k".to_string()),
-            Some((
-                Position::from(10),
-                vec![
-                    "l".to_string(),
-                    "ij".to_string(),
-                    "____".to_string(),
-                    "abcdefgh".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"k".to_string()),
+    //             Some((
+    //                 Position::from(10),
+    //                 vec![
+    //                     "l".to_string(),
+    //                     "ij".to_string(),
+    //                     "____".to_string(),
+    //                     "abcdefgh".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&'a'.to_string());
-        tree.witness();
-        tree.checkpoint();
-        tree.rewind();
-        for c in 'b'..'f' {
-            tree.append(&c.to_string());
-        }
-        tree.witness();
-        for c in 'f'..'i' {
-            tree.append(&c.to_string());
-        }
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&'a'.to_string());
+    //         tree.witness();
+    //         tree.checkpoint();
+    //         tree.rewind();
+    //         for c in 'b'..'f' {
+    //             tree.append(&c.to_string());
+    //         }
+    //         tree.witness();
+    //         for c in 'f'..'i' {
+    //             tree.append(&c.to_string());
+    //         }
 
-        assert_eq!(
-            tree.authentication_path(&"a".to_string()),
-            Some((
-                Position::zero(),
-                vec![
-                    "b".to_string(),
-                    "cd".to_string(),
-                    "efgh".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"a".to_string()),
+    //             Some((
+    //                 Position::zero(),
+    //                 vec![
+    //                     "b".to_string(),
+    //                     "cd".to_string(),
+    //                     "efgh".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&'a'.to_string());
-        tree.witness();
-        tree.remove_witness(&'a'.to_string());
-        tree.checkpoint();
-        tree.witness();
-        tree.rewind();
-        tree.checkpoint();
-        tree.append(&'a'.to_string());
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&'a'.to_string());
+    //         tree.witness();
+    //         tree.remove_witness(&'a'.to_string());
+    //         tree.checkpoint();
+    //         tree.witness();
+    //         tree.rewind();
+    //         tree.checkpoint();
+    //         tree.append(&'a'.to_string());
 
-        assert_eq!(
-            tree.authentication_path(&"a".to_string()),
-            Some((
-                Position::zero(),
-                vec![
-                    "a".to_string(),
-                    "__".to_string(),
-                    "____".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"a".to_string()),
+    //             Some((
+    //                 Position::zero(),
+    //                 vec![
+    //                     "a".to_string(),
+    //                     "__".to_string(),
+    //                     "____".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        tree.append(&'a'.to_string());
-        tree.append(&'b'.to_string());
-        tree.append(&'c'.to_string());
-        tree.witness();
-        tree.append(&'d'.to_string());
-        tree.append(&'e'.to_string());
-        tree.append(&'f'.to_string());
-        tree.append(&'g'.to_string());
-        tree.witness();
-        tree.checkpoint();
-        tree.append(&'h'.to_string());
-        tree.rewind();
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         tree.append(&'a'.to_string());
+    //         tree.append(&'b'.to_string());
+    //         tree.append(&'c'.to_string());
+    //         tree.witness();
+    //         tree.append(&'d'.to_string());
+    //         tree.append(&'e'.to_string());
+    //         tree.append(&'f'.to_string());
+    //         tree.append(&'g'.to_string());
+    //         tree.witness();
+    //         tree.checkpoint();
+    //         tree.append(&'h'.to_string());
+    //         tree.rewind();
 
-        assert_eq!(
-            tree.authentication_path(&"c".to_string()),
-            Some((
-                Position::from(2),
-                vec![
-                    "d".to_string(),
-                    "ab".to_string(),
-                    "efg_".to_string(),
-                    "________".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"c".to_string()),
+    //             Some((
+    //                 Position::from(2),
+    //                 vec![
+    //                     "d".to_string(),
+    //                     "ab".to_string(),
+    //                     "efg_".to_string(),
+    //                     "________".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        for c in 'a'..'n' {
-            tree.append(&c.to_string());
-        }
-        tree.witness();
-        tree.append(&'n'.to_string());
-        tree.witness();
-        tree.append(&'o'.to_string());
-        tree.append(&'p'.to_string());
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         for c in 'a'..'n' {
+    //             tree.append(&c.to_string());
+    //         }
+    //         tree.witness();
+    //         tree.append(&'n'.to_string());
+    //         tree.witness();
+    //         tree.append(&'o'.to_string());
+    //         tree.append(&'p'.to_string());
 
-        assert_eq!(
-            tree.authentication_path(&"m".to_string()),
-            Some((
-                Position::from(12),
-                vec![
-                    "n".to_string(),
-                    "op".to_string(),
-                    "ijkl".to_string(),
-                    "abcdefgh".to_string()
-                ]
-            ))
-        );
+    //         assert_eq!(
+    //             tree.authentication_path(&"m".to_string()),
+    //             Some((
+    //                 Position::from(12),
+    //                 vec![
+    //                     "n".to_string(),
+    //                     "op".to_string(),
+    //                     "ijkl".to_string(),
+    //                     "abcdefgh".to_string()
+    //                 ]
+    //             ))
+    //         );
 
-        let ops = ('a'..='l')
-            .into_iter()
-            .map(|c| Append(c.to_string()))
-            .chain(Some(Witness))
-            .chain(Some(Append('m'.to_string())))
-            .chain(Some(Append('n'.to_string())))
-            .chain(Some(Authpath('l'.to_string())))
-            .collect::<Vec<_>>();
+    //         let ops = ('a'..='l')
+    //             .into_iter()
+    //             .map(|c| Append(c.to_string()))
+    //             .chain(Some(Witness))
+    //             .chain(Some(Append('m'.to_string())))
+    //             .chain(Some(Append('n'.to_string())))
+    //             .chain(Some(Authpath('l'.to_string())))
+    //             .collect::<Vec<_>>();
 
-        let mut tree = BridgeTree::<String, 4>::new(100);
-        assert_eq!(
-            Operation::apply_all(&ops, &mut tree),
-            Some((
-                Position::from(11),
-                vec![
-                    "k".to_string(),
-                    "ij".to_string(),
-                    "mn__".to_string(),
-                    "abcdefgh".to_string()
-                ]
-            ))
-        );
-    }
+    //         let mut tree = BridgeTree::<String, 4>::new(100);
+    //         assert_eq!(
+    //             Operation::apply_all(&ops, &mut tree),
+    //             Some((
+    //                 Position::from(11),
+    //                 vec![
+    //                     "k".to_string(),
+    //                     "ij".to_string(),
+    //                     "mn__".to_string(),
+    //                     "abcdefgh".to_string()
+    //                 ]
+    //             ))
+    //         );
+    //     }
 
     #[test]
     fn drop_oldest_checkpoint() {
@@ -1422,39 +1433,39 @@ mod tests {
         assert!(t.drop_oldest_checkpoint());
     }
 
-    #[test]
-    fn checkpoint_rewind() {
-        let mut t = BridgeTree::<String, 6>::new(100);
-        t.append(&"a".to_string());
-        t.append(&"b".to_string());
-        t.checkpoint();
-        t.append(&"c".to_string());
-        t.witness();
-        assert!(!t.rewind());
+    //     #[test]
+    //     fn checkpoint_rewind() {
+    //         let mut t = BridgeTree::<String, 6>::new(100);
+    //         t.append(&"a".to_string());
+    //         t.append(&"b".to_string());
+    //         t.checkpoint();
+    //         t.append(&"c".to_string());
+    //         t.witness();
+    //         assert!(!t.rewind());
 
-        let mut t = BridgeTree::<String, 6>::new(100);
-        t.append(&"a".to_string());
-        t.append(&"b".to_string());
-        t.checkpoint();
-        t.witness();
-        t.witness();
-        assert!(t.rewind());
-    }
+    //         let mut t = BridgeTree::<String, 6>::new(100);
+    //         t.append(&"a".to_string());
+    //         t.append(&"b".to_string());
+    //         t.checkpoint();
+    //         t.witness();
+    //         t.witness();
+    //         assert!(t.rewind());
+    //     }
 
-    #[test]
-    fn frontier_from_parts() {
-        assert!(
-            super::Frontier::<(), 0>::from_parts(Position::zero(), Leaf::Left(()), vec![]).is_ok()
-        );
-        assert!(super::Frontier::<(), 0>::from_parts(
-            Position::zero(),
-            Leaf::Right((), ()),
-            vec![]
-        )
-        .is_ok());
-        assert!(
-            super::Frontier::<(), 0>::from_parts(Position::zero(), Leaf::Left(()), vec![()])
-                .is_err()
-        );
-    }
+    //     #[test]
+    //     fn frontier_from_parts() {
+    //         assert!(
+    //             super::Frontier::<(), 0>::from_parts(Position::zero(), Leaf::Left(()), vec![]).is_ok()
+    //         );
+    //         assert!(super::Frontier::<(), 0>::from_parts(
+    //             Position::zero(),
+    //             Leaf::Right((), ()),
+    //             vec![]
+    //         )
+    //         .is_ok());
+    //         assert!(
+    //             super::Frontier::<(), 0>::from_parts(Position::zero(), Leaf::Left(()), vec![()])
+    //                 .is_err()
+    //         );
+    //     }
 }
