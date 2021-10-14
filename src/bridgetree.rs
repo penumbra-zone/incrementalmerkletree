@@ -45,7 +45,7 @@ pub enum FrontierError {
 pub struct NonEmptyFrontier<H> {
     position: Position,
     leaf: Leaf<H>,
-    ommers: Vec<H>,
+    ommers: Vec<(H, H, H)>,
 }
 
 impl<H> NonEmptyFrontier<H> {
@@ -61,9 +61,9 @@ impl<H> NonEmptyFrontier<H> {
     pub fn from_parts(
         position: Position,
         leaf: Leaf<H>,
-        ommers: Vec<H>,
+        ommers: Vec<(H, H, H)>,
     ) -> Result<Self, FrontierError> {
-        let expected_ommers = position.ommer_altitudes().count();
+        let expected_ommers = 3 * position.ommer_altitudes().count();
         if expected_ommers == ommers.len() {
             Ok(NonEmptyFrontier {
                 position,
@@ -96,7 +96,7 @@ impl<H> NonEmptyFrontier<H> {
         &self.leaf
     }
 
-    pub fn ommers(&self) -> &[H] {
+    pub fn ommers(&self) -> &[(H, H, H)] {
         &self.ommers
     }
 }
@@ -139,24 +139,29 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
         // TODO
         if carry.is_some() {
             let mut new_ommers = Vec::with_capacity(self.position.altitudes_required().count());
-            for (ommer, ommer_lvl) in self.ommers.iter().zip(self.position.ommer_altitudes()) {
+            for ((a, b, c), ommer_lvl) in
+                self.ommers.into_iter().zip(self.position.ommer_altitudes())
+            {
                 if let Some((carry_ommer, carry_lvl)) = carry.as_ref() {
                     if *carry_lvl == ommer_lvl {
                         carry = Some((
-                            // only one arg here should be carry_ommer
-                            H::combine(ommer_lvl, &ommer, &carry_ommer, &carry_ommer, &carry_ommer),
+                            H::combine(ommer_lvl, &a, &b, &c, &carry_ommer),
                             ommer_lvl + 1,
                         ))
                     } else {
                         // insert the carry at the first empty slot; then the rest of the
                         // ommers will remain unchanged
                         new_ommers.push(carry_ommer.clone());
-                        new_ommers.push(ommer.clone());
+                        new_ommers.push(a);
+                        new_ommers.push(b);
+                        new_ommers.push(c);
                         carry = None;
                     }
                 } else {
                     // when there's no carry, just push on the ommer value
-                    new_ommers.push(ommer.clone());
+                    new_ommers.push(a);
+                    new_ommers.push(b);
+                    new_ommers.push(c);
                 }
             }
 
@@ -1099,16 +1104,17 @@ mod tests {
     use crate::tests::Operation::*;
     use crate::{Frontier, Tree};
 
-    // #[test]
-    // fn position_altitudes() {
-    //     assert_eq!(Position(0).max_altitude(), Altitude(0));
-    //     assert_eq!(Position(1).max_altitude(), Altitude(0));
-    //     assert_eq!(Position(2).max_altitude(), Altitude(1));
-    //     assert_eq!(Position(3).max_altitude(), Altitude(1));
-    //     assert_eq!(Position(4).max_altitude(), Altitude(2));
-    //     assert_eq!(Position(7).max_altitude(), Altitude(2));
-    //     assert_eq!(Position(8).max_altitude(), Altitude(3));
-    // }
+    #[test]
+    fn position_altitudes() {
+        assert_eq!(Position(0).max_altitude(), Altitude(0));
+        assert_eq!(Position(1).max_altitude(), Altitude(0));
+        assert_eq!(Position(2).max_altitude(), Altitude(0));
+        assert_eq!(Position(3).max_altitude(), Altitude(0));
+        assert_eq!(Position(4).max_altitude(), Altitude(1));
+        assert_eq!(Position(7).max_altitude(), Altitude(1));
+        assert_eq!(Position(8).max_altitude(), Altitude(1));
+        assert_eq!(Position(9).max_altitude(), Altitude(1));
+    }
 
     // #[test]
     // fn tree_depth() {
