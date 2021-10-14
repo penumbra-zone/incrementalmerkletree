@@ -1410,17 +1410,17 @@ mod tests {
     //     );
     // }
 
-    // #[test]
-    // fn drop_oldest_checkpoint() {
-    //     let mut t = BridgeTree::<String, 6>::new(100);
-    //     t.checkpoint();
-    //     t.append(&"a".to_string());
-    //     t.witness();
-    //     t.append(&"b".to_string());
-    //     t.append(&"c".to_string());
-    //     assert!(!t.rewind());
-    //     assert!(t.drop_oldest_checkpoint());
-    // }
+    #[test]
+    fn drop_oldest_checkpoint() {
+        let mut t = BridgeTree::<String, 6>::new(100);
+        t.checkpoint();
+        t.append(&"a".to_string());
+        t.witness();
+        t.append(&"b".to_string());
+        t.append(&"c".to_string());
+        assert!(!t.rewind());
+        assert!(t.drop_oldest_checkpoint());
+    }
 
     // #[test]
     // fn checkpoint_rewind() {
