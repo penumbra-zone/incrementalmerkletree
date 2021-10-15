@@ -106,7 +106,7 @@ impl Position {
     }
 
     /// Returns the altitude of the top of a binary tree containing
-    /// a number of nodes equal to the next power of two greater than
+    /// a number of nodes equal to the next power of four greater than
     /// or equal to `self + 1`.
     fn max_altitude(&self) -> Altitude {
         Altitude(if self.0 == 0 {
@@ -119,31 +119,34 @@ impl Position {
 
     /// Returns the altitude of each populated ommer.
     pub fn ommer_altitudes(&self) -> impl Iterator<Item = Altitude> + '_ {
-        (0..=self.max_altitude().0)
-            .into_iter()
-            .filter_map(move |i| {
-                if i != 0 && self.ith_coeff(i) != ARITY - 1 {
-                    Some(Altitude(i))
-                } else {
-                    None
-                }
-            })
+        (0..=self.max_altitude().0).into_iter().flat_map(move |i| {
+            // i != 0 since leaves cannot be ommers.
+            let num_ommers = if i != 0 { self.ith_coeff(i) } else { 0 };
+            std::iter::repeat(Altitude(i)).take(num_ommers.into())
+        })
     }
 
     /// Returns the altitude of each cousin and/or ommer required to construct
     /// an authentication path to the root of a merkle tree that has `self + 1`
     /// nodes.
     pub fn altitudes_required(&self) -> impl Iterator<Item = Altitude> + '_ {
-        (0..=self.max_altitude().0)
-            .into_iter()
-            .filter_map(move |i| {
-                if self.ith_coeff(i) == ARITY - 1 {
-                    // Returns none as we're ascending from the rightmost node.
-                    None
-                } else {
-                    Some(Altitude(i))
-                }
-            })
+        // needs change
+        // (0..=self.max_altitude().0)
+        //     .into_iter()
+        //     .filter_map(move |i| {
+        //         if self.ith_coeff(i) == ARITY - 1 {
+        //             // Returns none as we're ascending from the rightmost node.
+        //             None
+        //         } else {
+        //             Some(Altitude(i))
+        //         }
+        //     })
+        (0..=self.max_altitude().0).into_iter().flat_map(move |i| {
+            // i != 0 since leaves cannot be ommers.
+            let num_ommers = if i != 0 { self.ith_coeff(i) } else { 0 };
+            std::iter::repeat(Altitude(i)).take(num_ommers.into())
+        })
+        // TODO: Needs change
     }
 
     /// Hardcode 4 as the tree arity.
@@ -155,6 +158,7 @@ impl Position {
     /// an authentication path to the root of a merkle tree containing 2^64
     /// nodes.
     pub fn all_altitudes_required(&self) -> impl Iterator<Item = Altitude> + '_ {
+        // needs change
         (0..64).into_iter().filter_map(move |i| {
             if self.0 == 0 || self.ith_coeff(i) == ARITY - 1 {
                 Some(Altitude(i))

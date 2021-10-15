@@ -136,7 +136,7 @@ impl<H: Hashable + Clone> NonEmptyFrontier<H> {
             }
         };
 
-        // TODO
+        // TODO: Still at temp state where self.ommers is (H, H, H)
         if carry.is_some() {
             let mut new_ommers = Vec::with_capacity(self.position.altitudes_required().count());
             for ((a, b, c), ommer_lvl) in
@@ -1104,17 +1104,19 @@ mod tests {
     use crate::tests::Operation::*;
     use crate::{Frontier, Tree};
 
-    #[test]
-    fn position_altitudes() {
-        assert_eq!(Position(0).max_altitude(), Altitude(0));
-        assert_eq!(Position(1).max_altitude(), Altitude(0));
-        assert_eq!(Position(2).max_altitude(), Altitude(0));
-        assert_eq!(Position(3).max_altitude(), Altitude(0));
-        assert_eq!(Position(4).max_altitude(), Altitude(1));
-        assert_eq!(Position(7).max_altitude(), Altitude(1));
-        assert_eq!(Position(8).max_altitude(), Altitude(1));
-        assert_eq!(Position(9).max_altitude(), Altitude(1));
-    }
+    // This test is commented out - while it passes, this is because
+    // max_altitude() needs updating for the arity 4 case
+    // #[test]
+    // fn position_altitudes() {
+    //     assert_eq!(Position(0).max_altitude(), Altitude(0));
+    //     assert_eq!(Position(1).max_altitude(), Altitude(0));
+    //     assert_eq!(Position(2).max_altitude(), Altitude(0));
+    //     assert_eq!(Position(3).max_altitude(), Altitude(0));
+    //     assert_eq!(Position(4).max_altitude(), Altitude(1));
+    //     assert_eq!(Position(7).max_altitude(), Altitude(1));
+    //     assert_eq!(Position(8).max_altitude(), Altitude(1));
+    //     assert_eq!(Position(9).max_altitude(), Altitude(1));
+    // }
 
     // #[test]
     // fn tree_depth() {
